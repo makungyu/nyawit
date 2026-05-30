@@ -11,6 +11,7 @@ on:
     paths:
       - ea6350v3.config
       - feeds.conf.append
+      - files/**
       - .github/workflows/build.yml
 
 env:
