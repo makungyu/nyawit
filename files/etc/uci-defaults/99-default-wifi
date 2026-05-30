@@ -1,29 +1,72 @@
 #!/bin/sh
-# Runs once on first boot after every fresh flash:
-# enable Wi-Fi radios and set SSIDs + WPA2 password per band.
+# 0xygen-Linksys EA6350v3 first-boot setup.
 
-[ -e /etc/config/wireless ] || /sbin/wifi config
+LOG_TAG='0xygen-firstboot'
+log() { logger -t "${LOG_TAG}" -- "$*"; }
 
-. /lib/functions.sh
+log "starting first-boot configuration"
 
-set_iface() {
-	local dev
-	config_get dev "$1" device
-	case "$(uci -q get wireless.$dev.band)" in
-		5g) uci set wireless.$1.ssid='LINKSYS 5' ;;
-		*)  uci set wireless.$1.ssid='LINKSYS 2,4' ;;
-	esac
-	uci set wireless.$1.encryption='psk2'
-	uci set wireless.$1.key='1sampai10'
-}
+# ---- Constants -----------------------------------------------------------
+WIFI_PASS='1sampai10'
+SSID_24='0x'
+SSID_5='0x⁵'
+WIFI_COUNTRY='ID'
 
-enable_dev() {
-	uci set wireless.$1.disabled='0'
-}
+# ---- 1. WiFi: hard-set the configuration we want on every radio/iface ----
+# We assume the shipped /etc/config/wireless overlay defines radio0 (2.4 GHz)
+# and radio1 (5 GHz) with default_radio0 / default_radio1 child interfaces.
+# Re-apply everything here so this works even if the user wiped the overlay
+# or OpenWrt regenerated wireless config from scratch on first boot.
+for radio in radio0 radio1; do
+    uci -q set "wireless.${radio}=wifi-device"
+    uci -q set "wireless.${radio}.disabled=0"
+    uci -q set "wireless.${radio}.country=${WIFI_COUNTRY}"
+done
 
-config_load wireless
-config_foreach set_iface wifi-iface
-config_foreach enable_dev wifi-device
+# Make sure the radio<->band mapping matches what we baked into the overlay.
+uci -q set 'wireless.radio0.band=2g'
+uci -q set 'wireless.radio0.htmode=HT20'
+uci -q set 'wireless.radio0.channel=auto'
+uci -q set 'wireless.radio1.band=5g'
+uci -q set 'wireless.radio1.htmode=VHT80'
+uci -q set 'wireless.radio1.channel=auto'
 
-uci commit wireless
+uci -q set 'wireless.default_radio0=wifi-iface'
+uci -q set 'wireless.default_radio0.device=radio0'
+uci -q set 'wireless.default_radio0.network=lan'
+uci -q set 'wireless.default_radio0.mode=ap'
+uci -q set "wireless.default_radio0.ssid=${SSID_24}"
+uci -q set 'wireless.default_radio0.encryption=psk2'
+uci -q set "wireless.default_radio0.key=${WIFI_PASS}"
+uci -q set 'wireless.default_radio0.disabled=0'
+
+uci -q set 'wireless.default_radio1=wifi-iface'
+uci -q set 'wireless.default_radio1.device=radio1'
+uci -q set 'wireless.default_radio1.network=lan'
+uci -q set 'wireless.default_radio1.mode=ap'
+uci -q set "wireless.default_radio1.ssid=${SSID_5}"
+uci -q set 'wireless.default_radio1.encryption=psk2'
+uci -q set "wireless.default_radio1.key=${WIFI_PASS}"
+uci -q set 'wireless.default_radio1.disabled=0'
+
+uci -q commit wireless
+log "wifi configured (2.4G='${SSID_24}', 5G='${SSID_5}')"
+
+
+# ---- 7. Drop stale LuCI caches so freshly-installed apps' menu entries / ----
+# Lua controller index() registrations are picked up on first request. Without
+# this, newly-installed LuCI apps' routes may not be reachable on the very
+# first boot because the indexcache was generated before the package existed.
+rm -f /tmp/luci-indexcache /tmp/luci-modulecache 2>/dev/null
+rm -rf /tmp/luci-modulecache/ 2>/dev/null
+/etc/init.d/rpcd restart >/dev/null 2>&1 || true
+log "luci index + module cache cleared"
+
+# ---- 8. Reload wifi + network so things come up without a reboot -------
+/sbin/wifi reload >/dev/null 2>&1 || /sbin/wifi up >/dev/null 2>&1 || true
+/etc/init.d/network reload >/dev/null 2>&1 || true
+/etc/init.d/firewall reload >/dev/null 2>&1 || true
+log "wifi + network reloaded"
+
+log "first-boot configuration done"
 exit 0
