@@ -53,6 +53,9 @@ jobs:
           cd openwrt
           make defconfig
 
+      - name: Add custom files (uci-defaults)
+        run: cp -r files openwrt/files
+
       - name: Download sources
         run: cd openwrt && make download -j8
 

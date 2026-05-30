@@ -1,0 +1,29 @@
+#!/bin/sh
+# Runs once on first boot after every fresh flash:
+# enable Wi-Fi radios and set SSIDs + WPA2 password per band.
+
+[ -e /etc/config/wireless ] || /sbin/wifi config
+
+. /lib/functions.sh
+
+set_iface() {
+	local dev
+	config_get dev "$1" device
+	case "$(uci -q get wireless.$dev.band)" in
+		5g) uci set wireless.$1.ssid='LINKSYS 5' ;;
+		*)  uci set wireless.$1.ssid='LINKSYS 2,4' ;;
+	esac
+	uci set wireless.$1.encryption='psk2'
+	uci set wireless.$1.key='1sampai10'
+}
+
+enable_dev() {
+	uci set wireless.$1.disabled='0'
+}
+
+config_load wireless
+config_foreach set_iface wifi-iface
+config_foreach enable_dev wifi-device
+
+uci commit wireless
+exit 0
