@@ -1,4 +1,4 @@
-name: Build OpenWrt (EA6350v3 + QModem)
+name: Build OpenWrt (EA6350v3 + XModem)
 
 on:
   workflow_dispatch:
@@ -41,7 +41,7 @@ jobs:
           git clone --depth 1 -b "${{ github.event.inputs.version || 'v25.12.4' }}" \
             https://github.com/openwrt/openwrt.git openwrt
 
-      - name: Add QModem feed and update/install
+      - name: Add XModem feed and update/install
         run: |
           cd openwrt
           cat ../feeds.conf.append >> feeds.conf.default
@@ -66,7 +66,7 @@ jobs:
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: openwrt-ea6350v3-qmodem
+          name: openwrt-ea6350v3-XModem
           path: |
             openwrt/bin/targets/*/*/*-squashfs-factory.bin
             openwrt/bin/targets/*/*/*-squashfs-sysupgrade.bin
