@@ -2,7 +2,7 @@
 
 GitHub Actions build for **OpenWrt** firmware targeting the **Linksys EA6350v3**
 (`ipq40xx` / `arm_cortex-a7_neon-vfpv4`) with the
-[makungyu/XModem](https://github.com/makungyu/XModem) feed and
+[Xiaowit/XModem](https://github.com/Xiaowit/XModem) feed and
 **`luci-app-XModem-next`**.
 
 ## Build
